@@ -1,8 +1,8 @@
 # Collaborative Robot Assistant (CRA)
 
-CRA is an ongoing robotics project aiming to translate English/Korean voice commands into coordinated mobile-robot and arm behaviors. **The current runnable milestone is a ROS 2 command coordinator with a timed mock executor. It does not move a robot.**
+CRA is an ongoing robotics project aiming to translate English/Korean voice commands into coordinated mobile-robot and arm behaviors. **The current milestone adds an odometry-controlled mobile base in Gazebo. The original timed mock demo remains available. See [GAZEBO_DEMO.md](GAZEBO_DEMO.md) for robot launch instructions.**
 
-## Current architecture
+## Original mock-demo architecture
 
 ```mermaid
 flowchart LR
@@ -58,6 +58,7 @@ ros2 topic echo /cra/execution_state
 | cra_msgs | Intent and ExecutionState message definitions |
 | cra_fsm | Command gating, FIFO queue, execution feedback |
 | cra_execution_sim | Timed mock execution and status publishing |
+| cra_gazebo | Gazebo world, bridge launch, and distance-based drive executor |
 
 Intent contains `intent_type` and `args`. ExecutionState contains `state`, `intent_type`, `args`, `progress`, and `detail`.
 
@@ -65,9 +66,9 @@ Intent contains `intent_type` and `args`. ExecutionState contains `state`, `inte
 
 ## Limitations
 
-- No ASR, NLU, Gazebo robot, Nav2, perception, or MoveIt integration in this workspace yet.
-- All intent names are accepted and simulated identically.
-- No command IDs, timeout, cancellation, queue limit, or restart recovery.
+- No ASR, NLU, Nav2, perception, or MoveIt integration yet. Gazebo supports one straight-line drive skill.
+- The mock executor accepts all intent names identically; the Gazebo executor validates move_forward and its distance.
+- No command IDs, cancellation, queue limit, or restart recovery. The Gazebo executor has motion and odometry timeouts.
 - Feedback is matched by state transitions, not command identity; stale feedback handling needs hardening.
 - The executor accepts direct commands even while busy; normal serialization depends on using the FSM.
 - Automated demo verifies normal completion, not the ERROR/recovery path.
@@ -75,7 +76,7 @@ Intent contains `intent_type` and `args`. ExecutionState contains `state`, `inte
 ## Roadmap
 
 1. Validate intents and define deliberate failure behavior.
-2. Connect one narrowly scoped robot behavior in Gazebo.
+2. Extend the verified Gazebo forward-drive behavior toward navigation.
 3. Add navigation, perception, manipulation, and bilingual voice incrementally.
 
 See PROJECT_STATUS.md for the recovery checkpoint and verification record.
