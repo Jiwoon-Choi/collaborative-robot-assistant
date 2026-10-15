@@ -1,0 +1,6 @@
+#!/usr/bin/env bash
+set -e
+cd "$(dirname "$0")/.."
+source /opt/ros/humble/setup.bash
+source install/setup.bash
+exec python3 scripts/demo_client.py
