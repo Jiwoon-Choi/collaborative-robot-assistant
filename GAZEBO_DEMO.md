@@ -26,7 +26,7 @@ cd ~/cra_ws
 bash scripts/move_forward.sh
 ```
 
-This requests 0.5 metres forward. Watch the robot and the first terminal's DONE message. Repeat to request another move. Ctrl+C in Terminal 1 stops the launch.
+This requests 0.5 meters forward. Watch the robot and the first terminal's DONE message. Repeat to request another move. Ctrl+C in Terminal 1 stops the launch.
 
 For custom distances, from a sourced workspace:
 
@@ -36,7 +36,7 @@ source ~/cra_ws/install/setup.bash
 ros2 topic pub --once /cra/intent_raw cra_msgs/msg/Intent "{intent_type: move_forward, args: ['1.0']}"
 ```
 
-Allowed distances: 0.1–2.0 m. Invalid requests report ERROR and the FSM continues to the next queued request. Validation currently lives in the Gazebo executor, not the FSM.
+Allowed distances: 0.1–2.0m. Invalid requests report ERROR and the FSM continues to the next queued request. Validation currently lives in the Gazebo executor, not the FSM.
 
 ## Verification
 
@@ -49,7 +49,7 @@ source install/setup.bash
 python3 scripts/check_gazebo_motion.py
 ```
 
-It queues an invalid NaN distance followed by 0.5 m and 0.3 m moves, verifies ERROR/DONE/DONE, checks odometry displacement, and checks stopping drift. The headless integration run measured 0.486 m and 0.285 m; one-second stopping drift was 0.0012 m. Distance completion uses a 0.015 m tolerance. These are odometry measurements, not independently measured ground-truth pose.
+It queues an invalid NaN distance followed by 0.5m and 0.3m moves, verifies ERROR/DONE/DONE, checks odometry displacement, and checks stopping drift. The headless integration run measured 0.486m and 0.285m; one-second stopping drift was 0.0012m. Distance completion uses a 0.015m tolerance. These are odometry measurements, not independently measured ground-truth pose.
 
 To run without a window: `bash scripts/run_gazebo.sh gui:=false`.
 
@@ -69,7 +69,7 @@ Rendering fallback: https://gazebosim.org/docs/fortress/troubleshooting/
 
 ## Limits
 
-- Max commanded speed 0.2 m/s; motion times out after 25 seconds of wall time.
+- Max commanded speed 0.2m/s; motion times out after 25 seconds of wall time.
 - Missing/stale odometry causes ERROR; pausing the simulator during motion can trigger this.
 - Distance is displacement from the starting odometry position, without heading correction or obstacle handling.
 - Direct commands received while executing are ignored; send requests via /cra/intent_raw.
