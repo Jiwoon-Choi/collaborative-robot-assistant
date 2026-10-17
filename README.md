@@ -8,7 +8,7 @@ The longer-term goal is an English/Korean voice-controlled mobile robot with nav
 
 ## Current capabilities
 
-- Execute move_forward requests for distances between 0.1 and 2.0 metres.
+- Execute move_forward requests for distances between 0.1 and 2.0 meters.
 
 - Queue incoming requests and execute them one at a time.
 
@@ -85,7 +85,7 @@ Terminal 2, from the workspace root:
 bash scripts/move_forward.sh
 ```
 
-The second command requests a 0.5-metre forward move. Watch the robot move and the launch terminal report DONE.
+The second command requests a 0.5-meter forward move. Watch the robot move and the launch terminal report DONE.
 
 To observe structured feedback in another terminal:
 
@@ -125,11 +125,11 @@ Automated checks covered:
 
 - Rejecting an invalid NaN distance.
 
-- Completing queued 0.5 m and 0.3 m moves in order.
+- Completing queued 0.5m and 0.3m moves in order.
 
 - Checking odometry displacement and stopping drift.
 
-One integration run measured approximately 0.486 m and 0.285 m for those moves, with 0.0012 m of additional displacement during the following second. Completion uses a 0.015 m distance tolerance.
+One integration run measured approximately 0.486m and 0.285m for those moves, with 0.0012m of additional displacement during the following second. Completion uses a 0.015m distance tolerance.
 
 Manual inspection confirmed visible movement and stopping, velocity and odometry feedback, queueing, and recovery after a rejected negative-distance request.
 
