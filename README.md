@@ -1,49 +1,93 @@
 # Collaborative Robot Assistant (CRA)
 
-CRA is an ongoing robotics project aiming to translate English/Korean voice commands into coordinated mobile-robot and arm behaviors. **The current milestone adds an odometry-controlled mobile base in Gazebo. The original timed mock demo remains available. See [GAZEBO_DEMO.md](GAZEBO_DEMO.md) for robot launch instructions.**
+CRA is an ongoing ROS 2 robotics project exploring how user commands can become coordinated robot behaviors.
 
-## Original mock-demo architecture
+The current milestone is a Gazebo mobile-base demonstration: a typed forward-motion request passes through a queued task coordinator, drives a simulated robot, and reports progress and completion using odometry.
+
+The longer-term goal is an English/Korean voice-controlled mobile robot with navigation, perception, and manipulation.
+
+## Current capabilities
+
+- Execute move_forward requests for distances between 0.1 and 2.0 metres.
+
+- Queue incoming requests and execute them one at a time.
+
+- Adjust forward speed based on remaining distance.
+
+- Stop near the target and publish structured execution feedback.
+
+- Reject invalid distances and continue processing subsequent requests.
+
+- Detect stale odometry and enforce a motion timeout.
+
+## Architecture
 
 ```mermaid
-flowchart LR
-    User[Test publisher] -->|/cra/intent_raw: Intent| FSM[cra_fsm: busy gate and FIFO queue]
-    FSM -->|/cra/intent: Intent| Executor[cra_execution_sim: timed mock]
-    Executor -->|/cra/execution_state: ExecutionState| FSM
-    Executor --> Monitor[Demo client / status monitor]
+flowchart TD
+    User["Typed command"] -->|"/cra/intent_raw — Intent"| FSM["cra_fsm: gate and FIFO queue"]
+    FSM -->|"/cra/intent — Intent"| Executor["cra_gazebo: drive executor"]
+    Executor -->|"/cra/base/cmd_vel — Twist"| Bridge["ROS–Gazebo bridge"]
+    Bridge -->|"Gazebo velocity command"| Robot["Gazebo mobile base and DiffDrive plugin"]
+    Robot -->|"Gazebo odometry"| Bridge
+    Bridge -->|"/cra/base/odom — Odometry"| Executor
+    Executor -->|"/cra/execution_state — ExecutionState"| FSM
 ```
 
-The FSM sends one command at a time and queues additional requests. A DONE or ERROR transition releases the next command. The mock executor reports progress over approximately two seconds and stays in DONE until another command arrives. No intent-specific behavior or validation is implemented yet.
+The FSM decides when a request may execute. The drive executor validates the request and controls forward movement. Gazebo simulates the robot, and the bridge translates messages between ROS and Gazebo.
 
-## Environment and build
+Validation currently occurs in the drive executor. The raw/dispatched topic separation is an architectural convention, not an enforced security boundary.
 
-Recovered and checked on Ubuntu 22.04 under WSL 2, ROS 2 Humble, Python 3.10. Requires ROS 2, colcon, rclpy, rosidl message generation, launch, and launch_ros.
+## Environment
 
-From the workspace root (the directory containing src):
+Verified on:
+
+- Ubuntu 22.04 through WSL 2.
+
+- ROS 2 Humble.
+
+- Gazebo Fortress with ros_gz.
+
+- Python 3.10.
+
+The launch file uses Ogre rendering because the default Ogre 2 renderer failed in the tested WSL graphics environment.
+
+## Build
+
+These instructions assume ROS 2 Humble and colcon are already installed.
+
+Install the simulation dependencies:
+
+```bash
+sudo apt-get update
+sudo apt-get install ros-humble-ros-gz ignition-fortress
+```
+
+From the workspace root—the directory containing src/:
 
 ```bash
 source /opt/ros/humble/setup.bash
 colcon build
 ```
 
-## Run the demo
+## Run the Gazebo demo
+
+Run only one CRA demo at a time. The Gazebo and mock executors share command and feedback topics.
 
 Terminal 1, from the workspace root:
 
 ```bash
-bash scripts/run_demo.sh
+bash scripts/run_gazebo.sh
 ```
 
-Terminal 2, from the same workspace:
+Terminal 2, from the workspace root:
 
 ```bash
-bash scripts/send_demo.sh
+bash scripts/move_forward.sh
 ```
 
-The client sends three mock commands in a burst, shows state transitions, and checks that all three are dispatched and completed in order. Expect PASS after roughly six seconds. Run with a fresh launch and no other command publishers. Stop the nodes with Ctrl+C after the demo.
+The second command requests a 0.5-metre forward move. Watch the robot move and the launch terminal report DONE.
 
-Both terminals must use the same ROS_DOMAIN_ID if you set one. For isolated local testing, set `export ROS_DOMAIN_ID=187 ROS_LOCALHOST_ONLY=1` in both terminals before running the scripts.
-
-To inspect continuous feedback in another sourced terminal:
+To observe structured feedback in another terminal:
 
 ```bash
 source /opt/ros/humble/setup.bash
@@ -51,32 +95,76 @@ source install/setup.bash
 ros2 topic echo /cra/execution_state
 ```
 
-## Packages and interfaces
+To send a custom distance:
 
-| Package | Responsibility |
+```bash
+ros2 topic pub --once /cra/intent_raw cra_msgs/msg/Intent \
+  "{intent_type: move_forward, args: ['1.0']}"
+```
+
+The custom command requires the sourced environment shown above.
+
+Press Ctrl+C in the launch terminal to stop the system. Stop any topic-monitoring commands separately.
+
+See [GAZEBO_DEMO.md](GAZEBO_DEMO.md) for further instructions and limitations.
+
+## Packages
+
+|Package|Responsibility|
 |---|---|
-| cra_msgs | Intent and ExecutionState message definitions |
-| cra_fsm | Command gating, FIFO queue, execution feedback |
-| cra_execution_sim | Timed mock execution and status publishing |
-| cra_gazebo | Gazebo world, bridge launch, and distance-based drive executor |
+|`cra_msgs`|Defines `Intent` and `ExecutionState` messages|
+|`cra_fsm`|Queues requests, dispatches commands, and processes completion feedback|
+|`cra_execution_sim`|Provides the original timed mock executor|
+|`cra_gazebo`|Provides the robot world, bridge launch, and distance-based drive executor|
 
-Intent contains `intent_type` and `args`. ExecutionState contains `state`, `intent_type`, `args`, `progress`, and `detail`.
+## Verification
 
-`/cra/intent_raw` and `/cra/intent` separate requests from dispatched commands by convention. This is not an enforced security boundary; other publishers can still bypass the FSM.
+Automated checks covered:
 
-## Limitations
+- Building all four packages and validating the world description.
 
-- No ASR, NLU, Nav2, perception, or MoveIt integration yet. Gazebo supports one straight-line drive skill.
-- The mock executor accepts all intent names identically; the Gazebo executor validates move_forward and its distance.
-- No command IDs, cancellation, queue limit, or restart recovery. The Gazebo executor has motion and odometry timeouts.
-- Feedback is matched by state transitions, not command identity; stale feedback handling needs hardening.
-- The executor accepts direct commands even while busy; normal serialization depends on using the FSM.
-- Automated demo verifies normal completion, not the ERROR/recovery path.
+- Rejecting an invalid NaN distance.
 
-## Roadmap
+- Completing queued 0.5 m and 0.3 m moves in order.
 
-1. Validate intents and define deliberate failure behavior.
-2. Extend the verified Gazebo forward-drive behavior toward navigation.
-3. Add navigation, perception, manipulation, and bilingual voice incrementally.
+- Checking odometry displacement and stopping drift.
 
-See PROJECT_STATUS.md for the recovery checkpoint and verification record.
+One integration run measured approximately 0.486 m and 0.285 m for those moves, with 0.0012 m of additional displacement during the following second. Completion uses a 0.015 m distance tolerance.
+
+Manual inspection confirmed visible movement and stopping, velocity and odometry feedback, queueing, and recovery after a rejected negative-distance request.
+
+These measurements use odometry, not an independent ground-truth position check. See [PROJECT_STATUS.md](PROJECT_STATUS.md) for the verification record.
+
+## Original mock demo
+
+The original executor simulates each task for approximately two seconds without moving a robot.
+
+With the Gazebo demo stopped, run in separate terminals:
+
+```bash
+bash scripts/run_demo.sh
+```
+
+```bash
+bash scripts/send_demo.sh
+```
+
+The client checks that three mock commands dispatch and complete in order.
+
+## Limitations and future work
+
+- Forward motion only; no heading correction, route planning, or obstacle avoidance.
+
+- No voice input, language parsing, Nav2, perception, or arm manipulation yet.
+
+- No command IDs, cancellation, queue limit, or restart recovery.
+
+- The FSM detects state transitions rather than matching feedback to unique commands.
+
+- The current error policy advances to the next queued request.
+
+- The mock executor can replace an active task if commanded directly; the Gazebo executor ignores direct commands while busy.
+
+- This is a simulation demonstration, not a hardware-ready control system.
+
+Future work includes stronger task coordination, additional robot skills, and incremental integration of navigation, perception, manipulation, and bilingual voice input.
