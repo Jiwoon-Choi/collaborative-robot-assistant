@@ -151,6 +151,13 @@ bash scripts/send_demo.sh
 
 The client checks that three mock commands dispatch and complete in order.
 
+## Demo
+
+[Watch Demo 01: Forward motion with odometry feedback](https://youtu.be/XPAHac7gGwg)
+
+A typed 0.5-meter request drives the simulated mobile base and produces
+execution feedback. Reported displacement: 0.488m, using wheel odometry.
+
 ## Limitations and future work
 
 - Forward motion only; no heading correction, route planning, or obstacle avoidance.
